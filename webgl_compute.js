@@ -115,11 +115,7 @@ void main() {
      * @param {TJSTypedArrayOf<DataType>} [out] - Optional. TypedArray to read data into. If none is provided, a new one is created. Needs to match `fbo`'s data type according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/readPixels#pixels).
      * @returns {TJSTypedArrayOf<DataType>} `out` if provided. Otherwise, the newly created TypedArray.
      */
-    const readFBORaw = (fbo, 
-    // out: TJSTypedArrayOf<DataType> = new (getJSTypedArrayConstructor(
-    //   fbo.dataType
-    // ))(fbo.width * fbo.height * fbo.dims) as TJSTypedArrayOf<DataType>
-    out = createJSTypedArrayOf(fbo.dataType, fbo.width * fbo.height * fbo.dims)) => {
+    const readFBORaw = (fbo, out = createJSTypedArrayOf(fbo.dataType, fbo.width * fbo.height * fbo.dims)) => {
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.glFramebuffer);
         gl.readPixels(0, 0, fbo.width, fbo.height, {
             [1]: gl.RED,

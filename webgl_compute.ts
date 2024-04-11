@@ -212,9 +212,6 @@ void main() {
    */
   const readFBORaw = <DataType extends TDataType, Dims extends TDims>(
     fbo: TFBO<DataType, Dims>,
-    // out: TJSTypedArrayOf<DataType> = new (getJSTypedArrayConstructor(
-    //   fbo.dataType
-    // ))(fbo.width * fbo.height * fbo.dims) as TJSTypedArrayOf<DataType>
     out: TJSTypedArrayOf<DataType> = createJSTypedArrayOf(
       fbo.dataType,
       fbo.width * fbo.height * fbo.dims
