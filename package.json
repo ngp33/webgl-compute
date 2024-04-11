@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "typescript": "^5.4.4"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7"
+  },
+  "name": "webgl-compute",
+  "version": "1.0.0",
+  "main": "webgl_compute.js",
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
