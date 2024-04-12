@@ -48,6 +48,9 @@ const createJSTypedArrayOf = <DataType extends TDataType>(
   }[dataType](size) as TJSTypedArrayOf<DataType>;
 
 export function init(gl: WebGL2RenderingContext) {
+  gl.getExtension("OES_texture_float");
+  gl.getExtension("EXT_color_buffer_float");
+
   /**
    *
    * Private functions
