@@ -4,6 +4,8 @@ const createJSTypedArrayOf = (dataType, size) => new {
     ["ui8"]: Uint8Array,
 }[dataType](size);
 export function init(gl) {
+    gl.getExtension("OES_texture_float");
+    gl.getExtension("EXT_color_buffer_float");
     /**
      *
      * Private functions
