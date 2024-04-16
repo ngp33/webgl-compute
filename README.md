@@ -1,6 +1,6 @@
 # WebGL Compute
 
-WebGL Compute (or `glc` for short) is a extremely lightweight but powerful module that lets you run massive parallel computations on the GPU directly from your browser! It aims to abstract as much of the library-specific nuances of WebGL as possible so you can just focus on the good stuff!
+WebGL Compute (or `glc` for short) is an extremely lightweight and powerful module that lets you run massive parallel computations on the GPU directly from your browser! It aims to abstract as much of the library-specific nuances of WebGL as possible so you can just focus on the good stuff!
 
 ## Data Types
 

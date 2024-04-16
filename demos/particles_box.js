@@ -77,4 +77,4 @@ const mainLoop = (t) => {
     newPosFBO = temp;
     requestAnimationFrame(mainLoop);
 };
-mainLoop(1 / 60);
+mainLoop(0);

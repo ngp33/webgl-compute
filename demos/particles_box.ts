@@ -124,4 +124,4 @@ const mainLoop = (t: number) => {
   requestAnimationFrame(mainLoop);
 };
 
-mainLoop(1 / 60);
+mainLoop(0);

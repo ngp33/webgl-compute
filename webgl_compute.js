@@ -185,13 +185,13 @@ void main() {
     /**
      * Runs the given `computation` with the given `args` and stores the result in `outputFBO`.
      * @param {TComputation<Args>} computation
-     * @param {TFBO} outputFBO - Target to store the computation result in. Will run the fragment shader for every "pixel" in `outputFBO`.
+     * @param {TFBO | "canvas"} outputFBO - Target to store the computation result in. Will run the fragment shader for every "pixel" in `outputFBO`. Can also output directly to the WebGL context's source canvas.
      * @param {TPassedArgs<Args>} args - Arguments to pass into the computation.
      */
     const runComputation = (computation, outputFBO, args) => {
         gl.useProgram(computation.glProgram);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, outputFBO.glFramebuffer);
-        gl.viewport(0, 0, outputFBO.width, outputFBO.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, outputFBO === "canvas" ? null : outputFBO.glFramebuffer);
+        gl.viewport(0, 0, outputFBO === "canvas" ? gl.canvas.width : outputFBO.width, outputFBO === "canvas" ? gl.canvas.height : outputFBO.height);
         let texturesUsed = 0;
         for (const [name, { type, uniformLoc }] of Object.entries(computation.args)) {
             if (type === "fbo") {
