@@ -17,13 +17,15 @@ const displayCtx = (
 ).getContext("2d")!;
 displayCtx.scale(10, 10);
 
-const PARTICLES_W = 10 * 2;
-const PARTICLES_H = 10 * 2;
+const RES = 3;
+
+const PARTICLES_W = 10 * RES;
+const PARTICLES_H = 10 * RES;
 
 const NUM_PARTICLES = PARTICLES_W * PARTICLES_H;
 
-const SPRING_LENGTH = 5.5 / 2;
-const START_GAP = 5.0 / 2;
+const SPRING_LENGTH = 7.0 / RES;
+const START_LENGTH = 5.0 / RES;
 
 // Ordered as a list of columns
 const getParticleIndex = (x: number, y: number) => {
@@ -72,8 +74,8 @@ let posFBO = glComp.createFBO(
         new Array(PARTICLES_H)
           .fill(0)
           .map((v, y) => [
-            50.0 + (-PARTICLES_W / 2 + x) * START_GAP,
-            50.0 + (-PARTICLES_H / 2 + y) * START_GAP,
+            50.0 + (-PARTICLES_W / 2 + x) * START_LENGTH,
+            50.0 + (-PARTICLES_H / 2 + y) * START_LENGTH,
             0.0,
             0.0,
           ])
@@ -104,8 +106,8 @@ let newVelFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4);
 const updateVel = glComp.createComputation(
   { pos: "fbo", vel: "fbo", edges: "fbo", dt: "float" },
   /*GLSL*/ `
-vec4 myPos = ${glComp.MACROS.fbo_idx_myxy("pos")};
-vec4 myVel = ${glComp.MACROS.fbo_idx_myxy("vel")};
+vec4 posA = ${glComp.MACROS.fbo_idx_myxy("pos")};
+vec4 velA = ${glComp.MACROS.fbo_idx_myxy("vel")};
 
 vec4 acc = vec4(0.0);
 for (int i = 0; i < 8; i++) {
@@ -114,30 +116,28 @@ for (int i = 0; i < 8; i++) {
     "i",
     `int(${glComp.MACROS.my_x()}) * ${PARTICLES_H} + int(${glComp.MACROS.my_y()})`
   )}.x);
-  vec4 toOther = otherIdx == -1 ? vec4(0.0) : (${glComp.MACROS.fbo_idx(
+  if (otherIdx == -1) {
+    continue;
+  }
+  vec4 AB = (${glComp.MACROS.fbo_idx(
     "pos",
     `otherIdx / ${PARTICLES_H}`,
     `otherIdx % ${PARTICLES_H}`
-  )} - myPos);
-  acc += otherIdx == -1 ? vec4(0.0) : (0.5 * ((length(toOther) - (i >= 4 ? sqrt(2.0) : 1.0) * ${SPRING_LENGTH.toFixed(
+  )} - posA);
+  vec4 velAB = (${glComp.MACROS.fbo_idx(
+    "vel",
+    `otherIdx / ${PARTICLES_H}`,
+    `otherIdx % ${PARTICLES_H}`
+  )} - velA);
+  acc += (0.5 * ((length(AB) - (i >= 4 ? sqrt(2.0) : 1.0) * ${SPRING_LENGTH.toFixed(
     1
-  )}) * normalize(toOther)) - 
-  vec4(0.0)
-  // (length(myVel) < 1.0 ? vec4(0.0) : 0.25 * (dot(-normalize(toOther), normalize(myVel))) * myVel)
-);
+  )}) * normalize(AB)) +
+  (0.1 * (dot(normalize(AB), velAB)) * normalize(AB)));
 }
 
-fragColor = myVel;
-fragColor += acc;
-// fragColor = acc;
-  `
+fragColor = velA + acc;
+`
 );
-
-// fragColor = ${glComp.MACROS.fbo_idx(
-//   "edges",
-//   `int(${glComp.MACROS.my_x()}) * ${PARTICLES_H} + int(${glComp.MACROS.my_y()})`,
-//   "i"
-// )};
 
 const updatePos = glComp.createComputation(
   { pos: "fbo", vel: "fbo", dt: "float" },
@@ -174,7 +174,7 @@ const drawOutput = () => {
 
   for (let i = 0; i < NUM_PARTICLES; i++) {
     const [x, y] = [posOut[i * 4], posOut[i * 4 + 1]];
-    const [vx, vy] = [velOut[i * 4], velOut[i * 4 + 1]];
+    // const [vx, vy] = [velOut[i * 4], velOut[i * 4 + 1]];
 
     displayCtx.beginPath();
     displayCtx.arc(x, y, 0.5, 0, Math.PI * 2);
@@ -222,7 +222,5 @@ const mainLoop = (t: number) => {
   requestAnimationFrame(mainLoop);
   drawOutput();
 };
-
-// console.log(edgesOut);
 
 mainLoop(0);
