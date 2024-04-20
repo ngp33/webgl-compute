@@ -128,7 +128,6 @@ const mainLoop = (t) => {
     }
     const dt = (t - lastT) * 0.01;
     lastT = t;
-    drawOutput();
     glComp.runComputation(updateVel, newVelFBO, {
         pos: posFBO,
         vel: velFBO,
