@@ -37,7 +37,7 @@ let edgesFBO = glComp.createFBO(8, NUM_PARTICLES, "f32", 1, new Float32Array(new
     ];
 }))
     .flat(2)));
-let posFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4, new Float32Array(new Array(PARTICLES_W)
+let posFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new Array(PARTICLES_W)
     .fill(0)
     .map((v, x) => new Array(PARTICLES_H)
     .fill(0)
@@ -48,8 +48,8 @@ let posFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4, new Float32Arr
     0.0,
 ]))
     .flat(2)));
-let newPosFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4);
-let velFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4, new Float32Array(new Array(NUM_PARTICLES)
+let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
+let velFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new Array(NUM_PARTICLES)
     .fill(0)
     .map((v, i) => [
     (-1.0 + Math.random() * 2.0) / 10,
@@ -58,7 +58,7 @@ let velFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4, new Float32Arr
     0.0,
 ])
     .flat()));
-let newVelFBO = glComp.createFBO(PARTICLES_W, PARTICLES_H, "f32", 4);
+let newVelFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
 const updateVel = glComp.createComputation({ pos: "fbo", vel: "fbo", edges: "fbo", dt: "float" }, 
 /*GLSL*/ `
 vec4 posA = ${glComp.MACROS.fbo_idx_myxy("pos")};
@@ -66,12 +66,14 @@ vec4 velA = ${glComp.MACROS.fbo_idx_myxy("vel")};
 
 vec4 acc = vec4(0.0);
 for (int i = 0; i < 8; i++) {
-  int otherIdx = int(${glComp.MACROS.fbo_idx("edges", "i", `int(${glComp.MACROS.my_x()}) * ${PARTICLES_H} + int(${glComp.MACROS.my_y()})`)}.x);
+  int otherIdx = int(${glComp.MACROS.fbo_idx("edges", "i", 
+// `int(${glComp.MACROS.my_x()}) * ${PARTICLES_H} + int(${glComp.MACROS.my_y()})`
+`${glComp.MACROS.my_x()}`)}.x);
   if (otherIdx == -1) {
     continue;
   }
-  vec4 AB = (${glComp.MACROS.fbo_idx("pos", `otherIdx / ${PARTICLES_H}`, `otherIdx % ${PARTICLES_H}`)} - posA);
-  vec4 velAB = (${glComp.MACROS.fbo_idx("vel", `otherIdx / ${PARTICLES_H}`, `otherIdx % ${PARTICLES_H}`)} - velA);
+  vec4 AB = (${glComp.MACROS.fbo_idx("pos", `otherIdx`, "0")} - posA);
+  vec4 velAB = (${glComp.MACROS.fbo_idx("vel", `otherIdx`, "0")} - velA);
   acc += (0.5 * ((length(AB) - (i >= 4 ? sqrt(2.0) : 1.0) * ${SPRING_LENGTH.toFixed(1)}) * normalize(AB)) +
   (0.1 * (dot(normalize(AB), velAB)) * normalize(AB)));
 }
