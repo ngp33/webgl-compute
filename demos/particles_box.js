@@ -9,7 +9,7 @@ const glComp = init(gl);
 const displayCtx = document.getElementById("display").getContext("2d");
 displayCtx.scale(10, 10);
 const NUM_PARTICLES = 2000;
-let posFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new Array(NUM_PARTICLES)
+let posFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32", new Float32Array(new Array(NUM_PARTICLES)
     .fill(0)
     .map((v, i) => [
     45.0 + Math.random() * 10.0,
@@ -18,8 +18,8 @@ let posFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new A
     0.0,
 ])
     .flat()));
-let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
-let velFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new Array(NUM_PARTICLES)
+let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32");
+let velFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32", new Float32Array(new Array(NUM_PARTICLES)
     .fill(0)
     .map((v, i) => [
     (-1.0 + Math.random() * 2.0) / 10,
@@ -28,7 +28,7 @@ let velFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4, new Float32Array(new A
     0.0,
 ])
     .flat()));
-let newVelFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
+let newVelFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32");
 const updateVel = glComp.createComputation({ pos: "fbo", vel: "fbo", dt: "float" }, `
 vec4 pos = ${glComp.MACROS.fbo_idx_myxy("pos")};
 fragColor = ${glComp.MACROS.fbo_idx_myxy("vel")};

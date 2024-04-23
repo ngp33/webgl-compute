@@ -22,8 +22,8 @@ const NUM_PARTICLES = 2000;
 let posFBO = glComp.createFBO(
   NUM_PARTICLES,
   1,
-  "f32",
   4,
+  "f32",
   new Float32Array(
     new Array(NUM_PARTICLES)
       .fill(0)
@@ -36,12 +36,12 @@ let posFBO = glComp.createFBO(
       .flat()
   )
 );
-let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
+let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32");
 let velFBO = glComp.createFBO(
   NUM_PARTICLES,
   1,
-  "f32",
   4,
+  "f32",
   new Float32Array(
     new Array(NUM_PARTICLES)
       .fill(0)
@@ -54,7 +54,7 @@ let velFBO = glComp.createFBO(
       .flat()
   )
 );
-let newVelFBO = glComp.createFBO(NUM_PARTICLES, 1, "f32", 4);
+let newVelFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32");
 
 const updateVel = glComp.createComputation(
   { pos: "fbo", vel: "fbo", dt: "float" },

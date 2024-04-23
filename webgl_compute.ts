@@ -1,19 +1,20 @@
 type int = number;
 
 type TDataType = "f32" | "f16" | "ui8";
-type TDims = 1 | 2 | 3 | 4;
+type TPixelDims = 1 | 2 | 3 | 4;
 
-type TFBO<
-  DataType extends TDataType = TDataType,
-  Dims extends TDims = TDims
-> = {
+type TFBO<DataType extends TDataType = TDataType> = {
   glFramebuffer: WebGLFramebuffer;
   glTexture: WebGLTexture;
   width: int;
   height: int;
+  pixelDims: TPixelDims;
   dataType: DataType;
-  dims: Dims;
 };
+
+type TIndexedFBO<DataType extends TDataType = TDataType> = {
+  indexDims: int[];
+} & TFBO<DataType>;
 
 type TArgs = Record<string, "fbo" | "int" | "float">;
 type TCompiledArgs<Args extends TArgs> = {
@@ -47,15 +48,22 @@ const createJSTypedArrayOf = <DataType extends TDataType>(
     ["ui8"]: Uint8Array,
   }[dataType](size) as TJSTypedArrayOf<DataType>;
 
+/*
+ *
+ * Init
+ *
+ */
+
 export function init(gl: WebGL2RenderingContext) {
   gl.getExtension("OES_texture_float");
   gl.getExtension("EXT_color_buffer_float");
 
-  /**
+  /*
    *
    * Private functions
    *
    */
+
   const _compileShader = (
     shaderSource: string,
     shaderType: typeof gl.VERTEX_SHADER | typeof gl.FRAGMENT_SHADER
@@ -113,7 +121,7 @@ void main() {
     gl.VERTEX_SHADER
   );
 
-  /**
+  /*
    *
    * Public functions
    *
@@ -123,17 +131,17 @@ void main() {
    * Creates a Framebuffer Object (FBO) that can be used as an output destination or input. An FBO can be thought of as a big 2-dimensional array of "pixels", which are each just a vector of length `dims`.
    * @param {int} width
    * @param {int} height
+   * @param {TPixelDims} pixelDims - Number of elements in each "pixel". Can be 1 | 2 | 3 | 4.
    * @param {DataType} dataType - Data type of each "pixel" element. Can be "f32" | "f16" | "ui8".
-   * @param {Dims} dims - Number of elements in each "pixel". Can be 1 | 2 | 3 | 4.
-   * @param {TJSTypedArrayOf<DataType>} initData - Initial data in the FBO. Needs to match `dataType` according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D#pixels).
+   * @param {TJSTypedArrayOf<DataType>} initData - Initial data in the FBO. Grouped by rows. Needs to match `dataType` according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D#pixels).
    */
-  const createFBO = <DataType extends TDataType, Dims extends TDims>(
+  const createFBO = <DataType extends TDataType>(
     width: int,
     height: int,
+    pixelDims: TPixelDims,
     dataType: DataType,
-    dims: Dims,
     initData?: TJSTypedArrayOf<DataType>
-  ): TFBO<DataType, Dims> => {
+  ): TFBO<DataType> => {
     const glFramebuffer = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, glFramebuffer);
     if (glFramebuffer === null) throw "Failed to create FBO";
@@ -162,7 +170,7 @@ void main() {
         [3]: [gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE],
         [4]: [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE],
       },
-    }[dataType][dims];
+    }[dataType][pixelDims];
 
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -203,21 +211,49 @@ void main() {
       width,
       height,
       dataType,
-      dims,
+      pixelDims: pixelDims,
     };
   };
 
   /**
-   * Reads raw data from the FBO into a TypedArray.
-   * @param {TFBO<DataType, Dims>} fbo
+   * Creates an FBO that models an N-dimensional array (tensor) of `indexDims`. Each root element in this array is a "pixel" of size `pixelDims`.
+   * @param {int[]} indexDims - Size of each dimension of the array.
+   * @param {TPixelDims} pixelDims - Number of elements in "pixel". Can be 1 | 2 | 3 | 4.
+   * @param {DataType} dataType - Data type of each "pixel" element. Can be "f32" | "f16" | "ui8".
+   * @param {TJSTypedArrayOf<DataType>} initData - Initial data in the FBO. Needs to match `dataType` according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D#pixels).
+   */
+  const createIndexedFBO = <DataType extends TDataType>(
+    indexDims: int[],
+    pixelDims: TPixelDims,
+    dataType: DataType,
+    initData?: TJSTypedArrayOf<DataType>
+  ): TIndexedFBO<DataType> => {
+    const arrayLength = indexDims.reduce((acc, v) => acc * v);
+
+    const flatWidth = Math.ceil(Math.sqrt(arrayLength));
+    let flatHeight = flatWidth;
+    while (flatWidth * flatHeight >= arrayLength) {
+      flatHeight--;
+    }
+    flatHeight++;
+
+    return {
+      indexDims,
+      ...createFBO(flatWidth, flatHeight, pixelDims, dataType, initData),
+    };
+  };
+
+  /**
+   * Reads raw data from the FBO into a flat TypedArray.
+   * @param {TFBO<DataType>} fbo
    * @param {TJSTypedArrayOf<DataType>} [out] - Optional. TypedArray to read data into. If none is provided, a new one is created. Needs to match `fbo`'s data type according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/readPixels#pixels).
    * @returns {TJSTypedArrayOf<DataType>} `out` if provided. Otherwise, the newly created TypedArray.
    */
-  const readFBORaw = <DataType extends TDataType, Dims extends TDims>(
-    fbo: TFBO<DataType, Dims>,
+  const readFBORaw = <DataType extends TDataType>(
+    fbo: TFBO<DataType>,
     out: TJSTypedArrayOf<DataType> = createJSTypedArrayOf(
       fbo.dataType,
-      fbo.width * fbo.height * fbo.dims
+      fbo.width * fbo.height * fbo.pixelDims
     )
   ): TJSTypedArrayOf<DataType> => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.glFramebuffer);
@@ -232,7 +268,7 @@ void main() {
         [2]: gl.RG,
         [3]: gl.RGB,
         [4]: gl.RGBA,
-      }[fbo.dims],
+      }[fbo.pixelDims],
       {
         ["f32"]: gl.FLOAT,
         ["f16"]: gl.HALF_FLOAT,
@@ -246,29 +282,46 @@ void main() {
     return out;
   };
 
+  // Adapted from the built-in `FlatArray` type
+  // prettier-ignore
+  type TNDArray<T, Depth extends number> = {
+    done: T;
+    recur: TNDArray<T, [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20][Depth]>[]
+  }[Depth extends 0 ? "done" : "recur"];
+
   /**
-   * Reads data from the FBO and formats it as a list of rows of "pixels".
-   * @param {TFBO<DataType, Dims>} fbo
+   * Reads data from the FBO and formats it as an N-dimensional array of "pixels".
+   *
+   * (TS only) Requires explicitly passing in `ArrayDepth` since it can't be inferred.
+   * @param {TBaseFBO<DataType, Dims>} fbo
    */
-  const readFBOStructured = (
-    fbo: TFBO
-  ): TJSTypedArrayOf<(typeof fbo)["dataType"]>[][] => {
+  const readFBOStructured = <
+    DataType extends TDataType,
+    ArrayDepth extends int = 2
+  >(
+    fbo: TIndexedFBO<DataType> | TFBO<DataType>
+  ): TNDArray<TJSTypedArrayOf<DataType>, ArrayDepth> => {
     const rawData = readFBORaw(fbo);
 
-    const out = [];
-    for (let y = 0; y < fbo.height; y++) {
-      const row = [];
-      for (let x = 0; x < fbo.width; x++) {
-        const vec = createJSTypedArrayOf(fbo.dataType, fbo.dims);
-        for (let i = 0; i < fbo.dims; i++) {
-          vec.set([rawData[y * fbo.width + x * fbo.dims + i]], i);
-        }
-        row.push(vec);
+    const rawPixels = new Array<TJSTypedArrayOf<DataType>>(
+      rawData.length / fbo.pixelDims
+    );
+    for (let i = 0; i < rawPixels.length; i++) {
+      const pixel = createJSTypedArrayOf(fbo.dataType, fbo.pixelDims);
+      for (let j = 0; j < fbo.pixelDims; j++) {
+        pixel.set([rawData[i * fbo.pixelDims]], j);
       }
-      out.push(row);
     }
 
-    return out;
+    const dims = "indexDims" in fbo ? fbo.indexDims : [fbo.width, fbo.height];
+
+    return dims.reduceRight((acc: any[], dim) => {
+      const out = [];
+      for (let i = 0; i < acc.length / dim; i++) {
+        out.push(acc.slice(i * dim, (i + 1) * dim));
+      }
+      return out;
+    }, rawPixels) as any; // Return type requires `dims.length` as a constant. However, `TIndexedFBO.indexDims` is defined as just `number[]`, so its `length` property is at best `number`.
   };
 
   /**
@@ -319,7 +372,7 @@ void main() {
   /**
    * Runs the given `computation` with the given `args` and stores the result in `outputFBO`.
    * @param {TComputation<Args>} computation
-   * @param {TFBO | "canvas"} outputFBO - Target to store the computation result in. Will run the fragment shader for every "pixel" in `outputFBO`. Can also output directly to the WebGL context's source canvas.
+   * @param {TBaseFBO | "canvas"} outputFBO - Target to store the computation result in. Will run the fragment shader for every "pixel" in `outputFBO`. Can also output directly to the WebGL context's source canvas.
    * @param {TPassedArgs<Args>} args - Arguments to pass into the computation.
    */
   const runComputation = <Args extends TArgs>(
@@ -377,14 +430,37 @@ void main() {
   const MACROS = {
     fbo_idx: (name: string, x: string, y: string) =>
       `texelFetch(${name}, ivec2(${x}, ${y}), 0)`,
-    my_x: () => `gl_FragCoord.x - 0.5`,
-    my_y: () => `gl_FragCoord.y - 0.5`,
+    // my_x: () => `gl_FragCoord.x - 0.5`,
+    // my_y: () => `gl_FragCoord.y - 0.5`,
     fbo_idx_myxy: (name: string) =>
-      `texelFetch(${name}, ivec2(gl_FragCoord.x - 0.5, gl_FragCoord.y - 0.5), 0)`,
+      `texelFetch(${name}, ivec2(gl_FragCoord.x, gl_FragCoord.y), 0)`,
+    indexed_fbo_idx: <FBO extends TIndexedFBO>(
+      name: string,
+      fbo: FBO,
+      index: FBO["indexDims"]
+    ) =>
+      `texelFetch(${name}, ivec2((${
+        index.reduceRight<[string, number]>(
+          ([sumStr, chunkSize], dim, i) => [
+            `${sumStr} + ${dim * chunkSize}`,
+            chunkSize * fbo.indexDims[i],
+          ],
+          ["0", 1]
+        )[0]
+      }) % ${fbo.width}, ${
+        index.reduceRight<[string, number]>(
+          ([sumStr, chunkSize], dim, i) => [
+            `${sumStr} + ${dim * chunkSize}`,
+            chunkSize * fbo.indexDims[i],
+          ],
+          ["0", 1]
+        )[0]
+      } / ${fbo.width}), 0)`,
   };
 
   return {
     createFBO,
+    createIndexedFBO,
     readFBORaw,
     readFBOStructured,
     createComputation,
