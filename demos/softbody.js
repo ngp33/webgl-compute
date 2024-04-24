@@ -52,8 +52,8 @@ let newPosFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32");
 let velFBO = glComp.createFBO(NUM_PARTICLES, 1, 4, "f32", new Float32Array(new Array(NUM_PARTICLES)
     .fill(0)
     .map((v, i) => [
-    (-1.0 + Math.random() * 2.0) / 10,
-    (-1.0 + Math.random() * 2.0) / 10,
+    (-1.0 + Math.random() * 2.0) / 1000,
+    (-1.0 + Math.random() * 2.0) / 1000,
     0.0,
     0.0,
 ])
@@ -78,11 +78,11 @@ for (int i = 0; i < 8; i++) {
   }
   vec4 AB = texelFetch(pos, ivec2(otherIdx, 0), 0) - posA;
   vec4 velAB = texelFetch(vel, ivec2(otherIdx, 0), 0) - velA;
-  acc += (0.5 * ((length(AB) - (i >= 4 ? sqrt(2.0) : 1.0) * ${SPRING_LENGTH.toFixed(1)}) * normalize(AB)) +
-  (0.1 * (dot(normalize(AB), velAB)) * normalize(AB)));
+  acc += (0.0005 * ((length(AB) - (i >= 4 ? sqrt(2.0) : 1.0) * ${SPRING_LENGTH.toFixed(1)}) * normalize(AB)) +
+  (0.005 * (dot(normalize(AB), velAB)) * normalize(AB)));
 }
 
-fragColor = velA + acc;
+fragColor = velA + acc * dt;
 `);
 const updatePos = glComp.createComputation({ pos: "fbo", vel: "fbo", dt: "float" }, `
 fragColor = clamp(${glComp.MACROS.fbo_idx_myxy("pos")} + ${glComp.MACROS.fbo_idx_myxy("vel")} * dt, 0.0, 100.0);
@@ -130,7 +130,7 @@ const mainLoop = (t) => {
     if (lastT === 0) {
         lastT = t;
     }
-    const dt = (t - lastT) * 0.01;
+    const dt = t - lastT;
     lastT = t;
     glComp.runComputation(updateVel, newVelFBO, {
         pos: posFBO,
