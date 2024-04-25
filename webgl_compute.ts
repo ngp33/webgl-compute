@@ -16,12 +16,17 @@ type TIndexedFBO<DataType extends TDataType = TDataType> = {
   indexDims: int[];
 } & TFBO<DataType>;
 
-type TArgs = Record<string, "fbo" | "int" | "float">;
+type TVecOrMatArgType = `${"int" | "float" | "mat"}${2 | 3 | 4}`;
+type TArgs = Record<string, "fbo" | "int" | "float" | TVecOrMatArgType>;
 type TCompiledArgs<Args extends TArgs> = {
   [K in keyof Args]: { type: Args[K]; uniformLoc: WebGLUniformLocation };
 };
 type TPassedArgs<Args extends TArgs> = {
-  [K in keyof Args]: Args[K] extends "fbo" ? TFBO : number;
+  [K in keyof Args]: Args[K] extends "fbo"
+    ? TFBO
+    : Args[K] extends TVecOrMatArgType
+    ? number[]
+    : number;
 };
 
 type TComputation<Args extends TArgs> = {
@@ -404,6 +409,16 @@ void main() {
         texturesUsed++;
       } else if (type === "float") {
         gl.uniform1f(uniformLoc, args[name] as number);
+      } else if (type === "int") {
+        gl.uniform1i(uniformLoc, args[name] as number);
+      } else {
+        const [_, numType, dims] = type.match(/(int|float|mat)([2-4])/);
+        // @ts-ignore
+        gl[
+          `uniform${numType === "mat" ? "Matrix" : ""}${dims}${
+            numType === "int" ? "i" : "f"
+          }v`
+        ](uniformLoc, args[name]);
       }
     }
 
@@ -430,8 +445,6 @@ void main() {
   const MACROS = {
     fbo_idx: (name: string, x: string, y: string) =>
       `texelFetch(${name}, ivec2(${x}, ${y}), 0)`,
-    // my_x: () => `gl_FragCoord.x - 0.5`,
-    // my_y: () => `gl_FragCoord.y - 0.5`,
     fbo_idx_myxy: (name: string) =>
       `texelFetch(${name}, ivec2(gl_FragCoord.x, gl_FragCoord.y), 0)`,
     indexed_fbo_idx: <FBO extends TIndexedFBO>(

@@ -229,6 +229,14 @@ void main() {
             else if (type === "float") {
                 gl.uniform1f(uniformLoc, args[name]);
             }
+            else if (type === "int") {
+                gl.uniform1i(uniformLoc, args[name]);
+            }
+            else {
+                const [_, numType, dims] = type.match(/(int|float|mat)([2-4])/);
+                // @ts-ignore
+                gl[`uniform${numType === "mat" ? "Matrix" : ""}${dims}${numType === "int" ? "i" : "f"}v`](uniformLoc, args[name]);
+            }
         }
         gl.bindBuffer(gl.ARRAY_BUFFER, _fullScreenVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, _fullScreenVertexBufferData, gl.STATIC_DRAW);
@@ -242,8 +250,6 @@ void main() {
      */
     const MACROS = {
         fbo_idx: (name, x, y) => `texelFetch(${name}, ivec2(${x}, ${y}), 0)`,
-        // my_x: () => `gl_FragCoord.x - 0.5`,
-        // my_y: () => `gl_FragCoord.y - 0.5`,
         fbo_idx_myxy: (name) => `texelFetch(${name}, ivec2(gl_FragCoord.x, gl_FragCoord.y), 0)`,
         indexed_fbo_idx: (name, fbo, index) => `texelFetch(${name}, ivec2((${index.reduceRight(([sumStr, chunkSize], dim, i) => [
             `${sumStr} + ${dim * chunkSize}`,
