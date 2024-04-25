@@ -20,10 +20,10 @@ const floatStr = (v: number) =>
   Number.isInteger(v) ? v.toFixed(1) : v.toString();
 
 const render = glComp.createComputation(
-  {},
+  { t: "float" },
   /*GLSL*/ `
 vec3 spherePos = vec3(0.0, 0.0, -2.0);
-vec3 lightPos = vec3(0.0, 1.0, 0.0);
+vec3 lightPos = spherePos + vec3(2.0 * sin(t / 1000.0), 1.0, 2.0 * cos(t / 1000.0));
 vec3 sphereColor = vec3(0.0, 1.0, 1.0);
 
 vec3 rayOrigin = vec3(0.0, 0.0, 0.0);
@@ -75,4 +75,13 @@ float raySphereIntersect(vec3 r0, vec3 rd, vec3 s0, float sr) {
 `
 );
 
-glComp.runComputation(render, "canvas", {});
+let startT = 0;
+const mainLoop = (t: number) => {
+  if (startT === 0) {
+    startT = t;
+  }
+  glComp.runComputation(render, "canvas", { t: t - startT });
+  requestAnimationFrame(mainLoop);
+};
+
+mainLoop(0);
