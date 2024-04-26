@@ -212,8 +212,10 @@ const mainLoop = (t: number) => {
   posFBO = newPosFBO;
   newPosFBO = temp;
 
-  requestAnimationFrame(mainLoop);
   drawOutput();
+  document.getElementById("fps")!.innerHTML = `FPS: ${1000 / dt}`;
+
+  requestAnimationFrame(mainLoop);
 };
 
 mainLoop(0);

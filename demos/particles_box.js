@@ -67,6 +67,7 @@ const mainLoop = (t) => {
     const dt = t - lastT;
     lastT = t;
     drawOutput();
+    document.getElementById("fps").innerHTML = `FPS: ${1000 / dt}`;
     glComp.runComputation(updateVel, newVelFBO, { pos: posFBO, vel: velFBO, dt });
     let temp = velFBO;
     velFBO = newVelFBO;

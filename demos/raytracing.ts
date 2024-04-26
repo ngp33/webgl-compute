@@ -70,10 +70,15 @@ float raySphereIntersect(vec3 r0, vec3 rd, vec3 s0, float sr) {
 );
 
 let startT = 0;
+let lastT = 0;
 const mainLoop = (t: number) => {
   if (startT === 0) {
     startT = t;
+    lastT = t;
   }
+  const dt = t - lastT;
+  lastT = t;
+  document.getElementById("fps")!.innerHTML = `FPS: ${1000 / dt}`;
   glComp.runComputation(render, "canvas", { t: t - startT });
   requestAnimationFrame(mainLoop);
 };

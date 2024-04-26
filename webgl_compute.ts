@@ -249,6 +249,16 @@ void main() {
   };
 
   /**
+   * Returns the total number of bytes used by `fbo`.
+   * @param {TFBO} fbo - Size of each dimension of the array.
+   */
+  const getFBOMemorySize = (fbo: TFBO) =>
+    fbo.width *
+    fbo.height *
+    fbo.pixelDims *
+    { ["f32"]: 4, ["f16"]: 2, ["ui8"]: 1 }[fbo.dataType];
+
+  /**
    * Reads raw data from the FBO into a flat TypedArray.
    * @param {TFBO<DataType>} fbo
    * @param {TJSTypedArrayOf<DataType>} [out] - Optional. TypedArray to read data into. If none is provided, a new one is created. Needs to match `fbo`'s data type according to these rules: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/readPixels#pixels).
@@ -447,33 +457,83 @@ void main() {
       `texelFetch(${name}, ivec2(${x}, ${y}), 0)`,
     fbo_idx_myxy: (name: string) =>
       `texelFetch(${name}, ivec2(gl_FragCoord.x, gl_FragCoord.y), 0)`,
-    indexed_fbo_idx: <FBO extends TIndexedFBO>(
-      name: string,
-      fbo: FBO,
-      index: FBO["indexDims"]
+    // indexed_fbo_idx: <FBO extends TIndexedFBO>(
+    //   name: string,
+    //   fbo: FBO,
+    //   index: string[]
+    // ) =>
+    //   `texelFetch(${name}, ivec2((${
+    //     index.reduceRight<[string, number]>(
+    //       ([sumStr, chunkSize], dim, i) => [
+    //         `${sumStr} + ${dim}*${chunkSize}`,
+    //         chunkSize * fbo.indexDims[i],
+    //       ],
+    //       ["0", 1]
+    //     )[0]
+    //   }) % ${fbo.width}, ${
+    //     index.reduceRight<[string, number]>(
+    //       ([sumStr, chunkSize], dim, i) => [
+    //         `${sumStr} + ${dim}*${chunkSize}`,
+    //         chunkSize * fbo.indexDims[i],
+    //       ],
+    //       ["0", 1]
+    //     )[0]
+    //   } / ${fbo.width}), 0)`,
+    idx_from_2d_dynamic: (
+      varPrefix: string,
+      targetDims: string[],
+      sourceDims: [string, string],
+      index: [string, string]
     ) =>
-      `texelFetch(${name}, ivec2((${
-        index.reduceRight<[string, number]>(
-          ([sumStr, chunkSize], dim, i) => [
-            `${sumStr} + ${dim * chunkSize}`,
-            chunkSize * fbo.indexDims[i],
-          ],
-          ["0", 1]
-        )[0]
-      }) % ${fbo.width}, ${
-        index.reduceRight<[string, number]>(
-          ([sumStr, chunkSize], dim, i) => [
-            `${sumStr} + ${dim * chunkSize}`,
-            chunkSize * fbo.indexDims[i],
-          ],
-          ["0", 1]
-        )[0]
-      } / ${fbo.width}), 0)`,
+      //       `${targetDims.reduce((acc, v, i) => `${acc} int ${varPrefix}_${i};`, "")}
+      // {
+      //   int _flatIdx = ${index[1]} * ${sourceDims[0]} + ${index[0]};
+      //   int _chunkSize = ${targetDims[targetDims.length - 1]};
+      //   ${varPrefix}_${targetDims.length - 1} = _flatIdx % _chunkSize;
+      //       ${targetDims.slice(0, targetDims.length - 1).reduceRight<string>(
+      //         (accStr, dim, i) =>
+      //           `${accStr}
+      //   ${varPrefix}_${i} = _flatIdx / _chunkSize;
+      //   _chunkSize *= ${dim};`,
+      //         ""
+      //       )}
+      // }`,
+      `${targetDims.reduce((acc, v, i) => `${acc} int ${varPrefix}_${i};`, "")}
+{
+  int _flatIdx = ${index[1]} * ${sourceDims[0]} + ${index[0]};
+  int _chunkSize = 1;
+  ${targetDims.reduceRight<string>(
+    (accStr, dim, i) =>
+      `${accStr}
+  ${varPrefix}_${i} = (_flatIdx / _chunkSize) % ${dim};
+  _chunkSize *= ${dim};`,
+    ""
+  )}
+}`,
+    idx_to_2d_dynamic: (
+      varName: string,
+      targetDims: [string, string],
+      sourceDims: string[],
+      index: string[]
+    ) => `ivec2 ${varName};
+{
+  int _flatIdx = 0;
+  int _chunkSize = 1;
+  ${index.reduceRight<string>(
+    (accStr, dim, i) =>
+      `${accStr}
+  _flatIdx += ${dim} * _chunkSize;
+  _chunkSize *= ${sourceDims[i]};`,
+    ""
+  )}
+  ${varName} = ivec2(_flatIdx % ${targetDims[0]}, _flatIdx / ${targetDims[0]});
+}`,
   };
 
   return {
     createFBO,
     createIndexedFBO,
+    getFBOMemorySize,
     readFBORaw,
     readFBOStructured,
     createComputation,
